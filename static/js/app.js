@@ -1,124 +1,111 @@
-function getPlots(id) {
-    //Read samples.json
-        d3.json("samples.json").then (sampledata =>{
-            console.log(sampledata)
-            var ids = sampledata.samples[0].otu_ids;
-            console.log(ids)
-            var sampleValues =  sampledata.samples[0].sample_values.slice(0,10).reverse();
-            console.log(sampleValues)
-            var labels =  sampledata.samples[0].otu_labels.slice(0,10);
-            console.log (labels)
-        // get only top 10 otu ids for the plot OTU and reversing it. 
-            var OTU_top = ( sampledata.samples[0].otu_ids.slice(0, 10)).reverse();
-        // get the otu id's to the desired form for the plot
-            var OTU_id = OTU_top.map(d => "OTU " + d);
-            console.log(`OTU IDS: ${OTU_id}`)
-         // get the top 10 labels for the plot
-            var labels =  sampledata.samples[0].otu_labels.slice(0,10);
-            console.log(`OTU_labels: ${labels}`)
-            var trace = {
-                x: sampleValues,
-                y: OTU_id,
-                text: labels,
-                marker: {
-                color: 'blue'},
-                type:"bar",
-                orientation: "h",
-            };
-            // create data variable
-            var data = [trace];
-    
-            // create layout variable to set plots layout
-            var layout = {
-                title: "Top 10 OTU",
-                yaxis:{
-                    tickmode:"linear",
-                },
-                margin: {
-                    l: 100,
-                    r: 100,
-                    t: 100,
-                    b: 30
-                }
-            };
-    
-            // create the bar plot
-        Plotly.newPlot("bar", data, layout);
-            // The bubble chart
-            var trace1 = {
-                x: sampledata.samples[0].otu_ids,
-                y: sampledata.samples[0].sample_values,
-                mode: "markers",
-                marker: {
-                    size: sampledata.samples[0].sample_values,
-                    color: sampledata.samples[0].otu_ids
-                },
-                text:  sampledata.samples[0].otu_labels
-    
-            };
-    
-            // set the layout for the bubble plot
-            var layout_2 = {
-                xaxis:{title: "OTU ID"},
-                height: 600,
-                width: 1000
-            };
-    
-            // creating data variable 
-            var data1 = [trace1];
-    
-        // create the bubble plot
-        Plotly.newPlot("bubble", data1, layout_2); 
+function buildMetadata(sample) {
+
+    // @TODO: Complete the following function that builds the metadata panel
+    var sample_metadata = d3.select("#sample-metadata");
+      // Use `d3.json` to fetch the metadata for a sample
+      var metadata = `/metadata/${sample}`;
+      d3.json(metadata).then(function(sample) {
+        // Use d3 to select the panel with id of `#sample-metadata`
         
+        // Use `.html("") to clear any existing metadata
+        sample_metadata.html(" ");
+        // Use `Object.entries` to add each key and value pair to the panel
+        // Hint: Inside the loop, you will need to use d3 to append new
+        // tags for each key-value in the metadata.
+        Object.entries(sample).forEach(([key, value]) => {
+          sample_metadata.append("p").text(`${key} : ${value}`)    
         });
-    }  
-    // create the function to get the necessary data
-    function getDemoInfo(id) {
-    // read the json file to get data
-        d3.json("samples.json").then((data)=> {
-    // get the metadata info for the demographic panel
-            var metadata = data.metadata;
-    
-            console.log(metadata)
-    
-          // filter meta data info by id
-           var result = metadata.filter(meta => meta.id.toString() === id)[0];
-          // select demographic panel to put data
-           var demographicInfo = d3.select("#sample-metadata");
-            
-         // empty the demographic info panel each time before getting new id info
-           demographicInfo.html("");
-    
-         // grab the necessary demographic data data for the id and append the info to the panel
-            Object.entries(result).forEach((key) => {   
-                demographicInfo.append("h5").text(key[0].toUpperCase() + ": " + key[1] + "\n");    
-            });
-        });
+    })
+        // BONUS: Build the Gauge Chart
+        // buildGauge(data.WFREQ);
     }
-    // create the function for the change event
-    function optionChanged(id) {
-        getPlots(id);
-        getDemoInfo(id);
-    }
+    function buildCharts(sample) {
     
-    // create the function for the initial data rendering
+      // @TODO: Use `d3.json` to fetch the sample data for the plots
+      var sampledata = `/samples/${sample}`;
+      d3.json(sampledata).then((data) => {
+    
+      var x_values = data.otu_ids;
+      var y_values = data.sample_values;
+      var m_size = data.sample_values; 
+      var m_colors = data.otu_ids;
+      var t_values = data.otu_labels;
+    
+        // @TODO: Build a Bubble Chart using the sample data
+        // Create a trace for values
+        var trace1 = {
+        x: x_values,
+        y: y_values,
+        text: t_values,
+        mode: "markers",
+        marker: {
+            color: m_colors,
+            size: m_size
+        }
+      };
+    
+        var data = [trace1];
+    
+        // Apply the group barmode to the layout
+        var layout = {
+          title: "OTU ID",
+          showlegend: false,
+          // height: 600,
+        };
+    
+        Plotly.newPlot("bubble", data, layout)
+    
+        // @TODO: Build a Pie Chart
+        // HINT: You will need to use slice() to grab the top 10 sample_values,
+        // otu_ids, and labels (10 each).
+        d3.json(sampledata).then(function(data) {  
+          var pie_values = data.sample_values.slice(0,10);
+            var pie_otu_ids = data.otu_ids.slice(0,10);
+            var pie_hover = data.otu_labels.slice(0,10);
+      
+            var data = [{
+              values: pie_values,
+              labels: pie_otu_ids,
+              hovertext: pie_hover,
+              type: 'pie'
+            }];
+    
+            var layout = {
+              height: 400,
+              width: 500
+            };
+      
+            Plotly.newPlot('pie', data, layout);
+      
+          });
+        });   
+      }
+    
     function init() {
-        // select dropdown menu 
-        var dropdown = d3.select("#selDataset");
+      // Grab a reference to the dropdown select element
+      var selector = d3.select("#selDataset");
     
-        // read the data 
-        d3.json("samples.json").then((data)=> {
-            console.log(data)
-    
-            // get the id data to the dropdwown menu
-            data.names.forEach(function(name) {
-                dropdown.append("option").text(name).property("value");
-            });
-    
-            // call the functions to display the data and the plots to the page
-            getPlots(data.names[0]);
-            getDemoInfo(data.names[0]);
+      // Use the list of sample names to populate the select options
+      d3.json("/names").then((sampleNames) => {
+        sampleNames.forEach((sample) => {
+          selector
+            .append("option")
+            .text(sample)
+            .property("value", sample);
         });
+    
+        // Use the first sample from the list to build the initial plots
+        const firstSample = sampleNames[0];
+        buildCharts(firstSample);
+        buildMetadata(firstSample);
+      });
     }
     
+    function optionChanged(newSample) {
+      // Fetch new data each time a new sample is selected
+      buildCharts(newSample);
+      buildMetadata(newSample);
+    }
+    
+    // Initialize the dashboard
     init();
